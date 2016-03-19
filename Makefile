@@ -13,41 +13,41 @@ licenses.csv :
 	wget -O $@ https://data.cityofchicago.org/api/views/r5kz-chrr/rows.csv?accessType=DOWNLOAD
 
 licenses : licenses.csv
-	$(check_relation) psql -d $(PG_DB) -c "CREATE TABLE $@ \
-                                               (ID TEXT, \
-                                                LICENSE_ID TEXT, \
-                                                ACCOUNT_NUMBER TEXT, \
-                                                SITE_NUMBER TEXT, \
-                                                LEGAL_NAME TEXT, \
-                                                DOING_BUSINESS_AS_NAME TEXT, \
-                                                ADDRESS TEXT, \
-                                                CITY TEXT, \
-                                                STATE TEXT, \
-                                                ZIP_CODE TEXT, \
-                                                WARD TEXT, \
-                                                PRECINCT TEXT, \
-                                                POLICE_DISTRICT TEXT, \
-                                                LICENSE_CODE TEXT, \
-                                                LICENSE_DESCRIPTION TEXT, \
-                                                LICENSE_NUMBER TEXT, \
-                                                APPLICATION_TYPE TEXT, \
-                                                APPLICATION_CREATED_DATE DATE, \
-                                                APPLICATION_REQUIREMENTS_COMPLETE DATE, \
-                                                PAYMENT_DATE DATE, \
-                                                CONDITIONAL_APPROVAL TEXT, \
-                                                LICENSE_TERM_START_DATE DATE, \
-                                                LICENSE_TERM_EXPIRATION_DATE DATE, \
-                                                LICENSE_APPROVED_FOR_ISSUANCE DATE, \
-                                                DATE_ISSUED DATE, \
-                                                LICENSE_STATUS TEXT, \
-                                                LICENSE_STATUS_CHANGE_DATE DATE, \
-                                                SSA TEXT, \
-                                                LATITUDE TEXT, \
-                                                LONGITUDE TEXT, \
-                                                LOCATION TEXT)" && \
-	cat $< | psql -d $(PG_DB) -c "COPY $@ FROM STDIN WITH CSV HEADER" && \
-        psql -d $(PG_DB) -c "SELECT AddGeometryColumn('licenses', 'geom', 4326, 'POINT', 2)" && \
-        pgsql -d $(PG_DB) -c "UPDATE licenses SET geom=ST_SetSRID(ST_MakePoint(latitude::float, longitude::float),4326)"
+	$(check_relation) (psql -d $(PG_DB) -c "CREATE TABLE $@ \
+                                                (ID TEXT, \
+                                                 LICENSE_ID TEXT, \
+                                                 ACCOUNT_NUMBER TEXT, \
+                                                 SITE_NUMBER TEXT, \
+                                                 LEGAL_NAME TEXT, \
+                                                 DOING_BUSINESS_AS_NAME TEXT, \
+                                                 ADDRESS TEXT, \
+                                                 CITY TEXT, \
+                                                 STATE TEXT, \
+                                                 ZIP_CODE TEXT, \
+                                                 WARD TEXT, \
+                                                 PRECINCT TEXT, \
+                                                 POLICE_DISTRICT TEXT, \
+                                                 LICENSE_CODE TEXT, \
+                                                 LICENSE_DESCRIPTION TEXT, \
+                                                 LICENSE_NUMBER TEXT, \
+                                                 APPLICATION_TYPE TEXT, \
+                                                 APPLICATION_CREATED_DATE DATE, \
+                                                 APPLICATION_REQUIREMENTS_COMPLETE DATE, \
+                                                 PAYMENT_DATE DATE, \
+                                                 CONDITIONAL_APPROVAL TEXT, \
+                                                 LICENSE_TERM_START_DATE DATE, \
+                                                 LICENSE_TERM_EXPIRATION_DATE DATE, \
+                                                 LICENSE_APPROVED_FOR_ISSUANCE DATE, \
+                                                 DATE_ISSUED DATE, \
+                                                 LICENSE_STATUS TEXT, \
+                                                 LICENSE_STATUS_CHANGE_DATE DATE, \
+                                                 SSA TEXT, \
+                                                 LATITUDE TEXT, \
+                                                 LONGITUDE TEXT, \
+                                                 LOCATION TEXT)" && \
+	 cat $< | psql -d $(PG_DB) -c "COPY $@ FROM STDIN WITH CSV HEADER" && \
+         psql -d $(PG_DB) -c "SELECT AddGeometryColumn('licenses', 'geom', 4326, 'POINT', 2)" && \
+         psql -d $(PG_DB) -c "UPDATE licenses SET geom=ST_SetSRID(ST_MakePoint(latitude::float, longitude::float),4326)")
 
 
 
@@ -59,8 +59,8 @@ zoning_2016_01.shp : zoning.zip
 	touch $@
 
 zoning : zoning_2016_01.shp
-	shp2pgsql -c -s 102671:4326 $< $@ | psql -d $(PG_DB)
+	$(check_relation) shp2pgsql -c -s 102671:4326 $< $@ | psql -d $(PG_DB)
 
 
-residental_licenses.csv :
+residental_licenses.csv : zoning licenses
 	psql -d $(PG_DB) -c "COPY (select legal_name, address from licenses INNER join zoning ON (ST_Contains(zoning.geom, licenses.geom)) where ward = '5' and license_term_expiration_date > NOW() AND license_code = '1010' and zone_class LIKE 'R%') TO STDOUT CSV HEADER" > $@
