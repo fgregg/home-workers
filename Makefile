@@ -47,7 +47,7 @@ licenses : licenses.csv
                                                  LOCATION TEXT)" && \
 	 cat $< | psql -d $(PG_DB) -c "COPY $@ FROM STDIN WITH CSV HEADER" && \
          psql -d $(PG_DB) -c "SELECT AddGeometryColumn('licenses', 'geom', 4326, 'POINT', 2)" && \
-         psql -d $(PG_DB) -c "UPDATE licenses SET geom=ST_SetSRID(ST_MakePoint(latitude::float, longitude::float),4326)")
+         psql -d $(PG_DB) -c "UPDATE licenses SET geom=ST_SetSRID(ST_MakePoint(longitude::float, latitude::float),4326)")
 
 
 
@@ -63,4 +63,4 @@ zoning : zoning_2016_01.shp
 
 
 residental_licenses.csv : zoning licenses
-	psql -d $(PG_DB) -c "COPY (select legal_name, address from licenses INNER join zoning ON (ST_Contains(zoning.geom, licenses.geom)) where ward = '5' and license_term_expiration_date > NOW() AND license_code = '1010' and zone_class LIKE 'R%') TO STDOUT CSV HEADER" > $@
+	psql -d $(PG_DB) -c "COPY (select DISTINCT ON (account_number) legal_name, doing_business_as_name, address, license_description, ward, ROUND((ST_DISTANCE(ST_SetSRID(ST_MakePoint(-87.56374, 41.76832), 4326)::geography, licenses.geom::geography) * 0.000621371)::numeric, 2) from licenses INNER join zoning ON (ST_Contains(zoning.geom, licenses.geom)) WHERE license_term_expiration_date > NOW() and zone_class LIKE 'R%' AND ward in ('5', '6', '7', '8', '10')) TO STDOUT CSV HEADER" > $@
