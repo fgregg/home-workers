@@ -69,10 +69,11 @@ residential_licenses.csv : zoning licenses
                                    doing_business_as_name, \
                                    address, \
                                    license_description, \
-                                   ward, ROUND((ST_DISTANCE(ST_SetSRID(ST_MakePoint($(CULTURAL_CENTER)), \
-                                                                       4326)::geography, \
-                                                            licenses.geom::geography) * 0.000621371)::numeric, \
-                                               2) AS miles_from_cultural_center \
+                                   ward, 
+                                   ROUND((ST_DISTANCE(ST_SetSRID(ST_MakePoint($(CULTURAL_CENTER)), \
+                                                                 4326)::geography, \
+                                                      licenses.geom::geography) * 0.000621371)::numeric, \
+                                         2) AS miles_from_cultural_center \
                                    FROM licenses INNER join zoning \
                                    ON (ST_Contains(zoning.geom, licenses.geom)) \
                                    WHERE license_term_expiration_date > NOW() \
