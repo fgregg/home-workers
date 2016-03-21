@@ -69,7 +69,7 @@ residential_licenses.csv : zoning licenses
                                    doing_business_as_name, \
                                    address, \
                                    license_description, \
-                                   ward, 
+                                   ward, \
                                    ROUND((ST_DISTANCE(ST_SetSRID(ST_MakePoint($(CULTURAL_CENTER)), \
                                                                  4326)::geography, \
                                                       licenses.geom::geography) * 0.000621371)::numeric, \
