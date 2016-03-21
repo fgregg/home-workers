@@ -1,4 +1,5 @@
 PG_DB=home_workers
+CULTURAL_CENTER=-87.56374, 41.76832
 
 define check_relation
  psql -d $(PG_DB) -c "\d $@" > /dev/null 2>&1 ||
@@ -62,5 +63,40 @@ zoning : zoning_2016_01.shp
 	$(check_relation) shp2pgsql -c -s 102671:4326 $< $@ | psql -d $(PG_DB)
 
 
-residental_licenses.csv : zoning licenses
-	psql -d $(PG_DB) -c "COPY (select DISTINCT ON (account_number) legal_name, doing_business_as_name, address, license_description, ward, ROUND((ST_DISTANCE(ST_SetSRID(ST_MakePoint(-87.56374, 41.76832), 4326)::geography, licenses.geom::geography) * 0.000621371)::numeric, 2) from licenses INNER join zoning ON (ST_Contains(zoning.geom, licenses.geom)) WHERE license_term_expiration_date > NOW() and zone_class LIKE 'R%' AND ward in ('5', '6', '7', '8', '10')) TO STDOUT CSV HEADER" > $@
+residential_licenses.csv : zoning licenses
+	psql -d $(PG_DB) -c "COPY (select DISTINCT ON (account_number) \
+                                   legal_name, \
+                                   doing_business_as_name, \
+                                   address, \
+                                   license_description, \
+                                   ward, ROUND((ST_DISTANCE(ST_SetSRID(ST_MakePoint($(CULTURAL_CENTER)), \
+                                                                       4326)::geography, \
+                                                            licenses.geom::geography) * 0.000621371)::numeric, \
+                                               2) AS miles_from_cultural_center \
+                                   FROM licenses INNER join zoning \
+                                   ON (ST_Contains(zoning.geom, licenses.geom)) \
+                                   WHERE license_term_expiration_date > NOW() \
+                                   AND zone_class LIKE 'R%' \
+                                   AND ward IN ('5', '6', '7', '8', '10') \
+                                   AND license_description NOT IN \
+                                        ('Children''s Services Facility License', \
+                                         'Tobacco Retail Over Counter', \
+                                         'Tavern', \
+                                         'Retail Food Establishment', \
+                                         'Raffles', \
+                                         'Public Garage', \
+                                         'Animal Care License', \
+                                         'Consumption on Premises - Incidental Activity', \
+                                         'Food - Shared Kitchen Long-Term User', \
+                                         'Manufacturing Establishments', \
+                                         'Motor Vehicle Services License', \
+                                         'Peddler License', \
+                                         'Package Goods', \
+                                         'Music and Dance', \
+                                         'Outdoor Patio', \
+                                         'Not-For-Profit Club', \
+                                         'Filling Station', \
+                                         'Public Place of Amusement', \
+                                         'Late Hour', \
+                                         'Caterer''s Liquor License')) \
+                             TO STDOUT CSV HEADER" > $@
